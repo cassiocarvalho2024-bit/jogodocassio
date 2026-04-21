@@ -2,20 +2,27 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Meu Jogo</title>
+<title>Flappy Game</title>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
 </head>
 
 <body>
 
 <script>
+let player;
+let pipes;
+let score = 0;
+let scoreText;
+let gameOver = false;
+
 const config = {
     type: Phaser.AUTO,
-    width: 800,
+    width: 400,
     height: 600,
+    backgroundColor: "#0f172a",
     physics: {
-        default: 'arcade',
-        arcade: { gravity: { y: 300 } }
+        default: "arcade",
+        arcade: { gravity: { y: 500 }, debug: false }
     },
     scene: {
         preload: preload,
@@ -25,22 +32,69 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-let player;
 
 function preload() {
-    this.load.image('player', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
+    this.load.image("player", "https://labs.phaser.io/assets/sprites/yellow_ball.png");
+    this.load.image("pipe", "https://labs.phaser.io/assets/sprites/column.png");
 }
 
 function create() {
-    player = this.physics.add.image(400, 300, 'player');
-    player.setBounce(0.5);
+    player = this.physics.add.image(100, 300, "player");
     player.setCollideWorldBounds(true);
+
+    pipes = this.physics.add.group();
+
+    scoreText = this.add.text(20, 20, "Score: 0", { fontSize: "20px", fill: "#fff" });
+
+    this.input.on("pointerdown", jump, this);
+    this.input.keyboard.on("keydown-SPACE", jump, this);
+
+    this.time.addEvent({
+        delay: 1500,
+        callback: addPipes,
+        callbackScope: this,
+        loop: true
+    });
 }
 
 function update() {
-    if (this.input.keyboard.addKey('SPACE').isDown) {
-        player.setVelocityY(-200);
-    }
+    if (gameOver) return;
+
+    this.physics.overlap(player, pipes, hitPipe, null, this);
+}
+
+function jump() {
+    if (gameOver) return;
+    player.setVelocityY(-250);
+}
+
+function addPipes() {
+    if (gameOver) return;
+
+    let gap = 150;
+    let topHeight = Phaser.Math.Between(50, 300);
+
+    let pipeTop = pipes.create(400, topHeight - gap, "pipe");
+    pipeTop.setOrigin(0,1);
+    pipeTop.body.allowGravity = false;
+    pipeTop.setVelocityX(-200);
+
+    let pipeBottom = pipes.create(400, topHeight + gap, "pipe");
+    pipeBottom.setOrigin(0,0);
+    pipeBottom.body.allowGravity = false;
+    pipeBottom.setVelocityX(-200);
+
+    score++;
+    scoreText.setText("Score: " + score);
+}
+
+function hitPipe() {
+    gameOver = true;
+    this.add.text(100, 250, "GAME OVER\nClique para reiniciar", { fontSize: "20px", fill: "#fff" });
+
+    this.input.once("pointerdown", () => {
+        location.reload();
+    });
 }
 </script>
 
