@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Flappy do Cassio 🚀</title>
+<title>Flappy do Cassio </title>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
 
 <style>
@@ -23,6 +23,7 @@ let scoreText, bestText, startText;
 let gameOver = false;
 let started = false;
 let speed = -200;
+let canJump = true;
 
 // sons
 let jumpSound, hitSound, pointSound;
@@ -33,7 +34,7 @@ const config = {
     height: 600,
     physics: {
         default: "arcade",
-        arcade: { gravity: { y: 500 } } // corrigido
+        arcade: { gravity: { y: 500 } }
     },
     scene: {
         preload, create, update
@@ -69,31 +70,32 @@ function create() {
         fill: "#fff"
     });
 
-    this.input.on("pointerdown", () => handleInput.call(this));
-    this.input.keyboard.on("keydown-SPACE", () => handleInput.call(this));
+    // INPUT CORRIGIDO (mais confiável)
+    this.input.on("pointerdown", () => handleInput(this));
+    this.input.keyboard.on("keydown-SPACE", () => handleInput(this));
 }
 
-function handleInput() {
-    // libera áudio (sem travar o jogo)
-    if (this.sound.context.state === "suspended") {
-        this.sound.context.resume();
+function handleInput(scene) {
+    // libera áudio
+    if (scene.sound.context.state === "suspended") {
+        scene.sound.context.resume();
     }
 
     if (!started) {
-        startGame.call(this);
+        startGame(scene);
     } else {
         jump();
     }
 }
 
-function startGame() {
+function startGame(scene) {
     started = true;
     startText.setVisible(false);
 
-    this.time.addEvent({
+    scene.time.addEvent({
         delay: 1400,
         callback: addPipes,
-        callbackScope: this,
+        callbackScope: scene,
         loop: true
     });
 }
@@ -103,21 +105,27 @@ function update() {
 
     this.physics.overlap(player, pipes, hitPipe, null, this);
 
-    // limpar pipes fora da tela
     pipes.children.iterate(pipe => {
         if (pipe && pipe.x < -50) pipe.destroy();
     });
 }
 
 function jump() {
-    if (gameOver) return;
+    if (gameOver || !canJump) return;
 
-    player.setVelocityY(-380); // corrigido
+    canJump = false;
+
+    // ZERA velocidade antes (isso resolve o bug do pulo fraco)
+    player.setVelocityY(0);
+    player.setVelocityY(-420);
 
     if (jumpSound) jumpSound.play();
 
     player.setAngle(-20);
-    setTimeout(() => player.setAngle(0), 200);
+    setTimeout(() => {
+        player.setAngle(0);
+        canJump = true;
+    }, 150);
 }
 
 function addPipes() {
@@ -136,7 +144,6 @@ function addPipes() {
     pipeBottom.body.allowGravity = false;
     pipeBottom.setVelocityX(speed);
 
-    // zona de pontuação
     let scoreZone = this.add.rectangle(400, 300, 10, 600);
     this.physics.add.existing(scoreZone);
     scoreZone.body.allowGravity = false;
@@ -149,8 +156,6 @@ function addPipes() {
         if (pointSound) pointSound.play();
 
         scoreZone.destroy();
-
-        // aumenta dificuldade
         speed -= 2;
     });
 }
