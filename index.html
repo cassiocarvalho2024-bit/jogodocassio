@@ -2,8 +2,16 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Flappy Game</title>
+<title>Flappy do Cassio</title>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
+
+<style>
+body {
+  margin: 0;
+  background: linear-gradient(to bottom, #0f172a, #1e293b);
+  font-family: Arial;
+}
+</style>
 </head>
 
 <body>
@@ -12,17 +20,20 @@
 let player;
 let pipes;
 let score = 0;
+let best = localStorage.getItem("best") || 0;
 let scoreText;
+let bestText;
+let startText;
 let gameOver = false;
+let started = false;
 
 const config = {
     type: Phaser.AUTO,
     width: 400,
     height: 600,
-    backgroundColor: "#0f172a",
     physics: {
         default: "arcade",
-        arcade: { gravity: { y: 500 }, debug: false }
+        arcade: { gravity: { y: 600 }, debug: false }
     },
     scene: {
         preload: preload,
@@ -39,15 +50,41 @@ function preload() {
 }
 
 function create() {
+
     player = this.physics.add.image(100, 300, "player");
     player.setCollideWorldBounds(true);
+    player.setBounce(0.2);
 
     pipes = this.physics.add.group();
 
-    scoreText = this.add.text(20, 20, "Score: 0", { fontSize: "20px", fill: "#fff" });
+    scoreText = this.add.text(20, 20, "Score: 0", { fontSize: "22px", fill: "#fff" });
+    bestText = this.add.text(20, 50, "Recorde: " + best, { fontSize: "16px", fill: "#aaa" });
 
-    this.input.on("pointerdown", jump, this);
-    this.input.keyboard.on("keydown-SPACE", jump, this);
+    startText = this.add.text(70, 250, "CLIQUE PARA JOGAR", {
+        fontSize: "24px",
+        fill: "#fff"
+    });
+
+    this.input.on("pointerdown", () => {
+        if (!started) {
+            startGame.call(this);
+        } else {
+            jump();
+        }
+    });
+
+    this.input.keyboard.on("keydown-SPACE", () => {
+        if (!started) {
+            startGame.call(this);
+        } else {
+            jump();
+        }
+    });
+}
+
+function startGame() {
+    started = true;
+    startText.setVisible(false);
 
     this.time.addEvent({
         delay: 1500,
@@ -58,21 +95,26 @@ function create() {
 }
 
 function update() {
-    if (gameOver) return;
+    if (!started || gameOver) return;
 
     this.physics.overlap(player, pipes, hitPipe, null, this);
 }
 
 function jump() {
     if (gameOver) return;
-    player.setVelocityY(-250);
+
+    player.setVelocityY(-280);
+
+    // efeito visual
+    player.setAngle(-20);
+    setTimeout(() => player.setAngle(0), 200);
 }
 
 function addPipes() {
     if (gameOver) return;
 
-    let gap = 150;
-    let topHeight = Phaser.Math.Between(50, 300);
+    let gap = 160;
+    let topHeight = Phaser.Math.Between(80, 400);
 
     let pipeTop = pipes.create(400, topHeight - gap, "pipe");
     pipeTop.setOrigin(0,1);
@@ -90,7 +132,14 @@ function addPipes() {
 
 function hitPipe() {
     gameOver = true;
-    this.add.text(100, 250, "GAME OVER\nClique para reiniciar", { fontSize: "20px", fill: "#fff" });
+
+    if (score > best) {
+        best = score;
+        localStorage.setItem("best", best);
+    }
+
+    this.add.text(60, 250, "GAME OVER", { fontSize: "28px", fill: "#ff4d4d" });
+    this.add.text(40, 300, "Clique para reiniciar", { fontSize: "18px", fill: "#fff" });
 
     this.input.once("pointerdown", () => {
         location.reload();
