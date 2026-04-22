@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Flappy do Cassio </title>
+<title>Flappy do Cassio 🚀</title>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
 
 <style>
@@ -23,10 +23,6 @@ let scoreText, bestText, startText;
 let gameOver = false;
 let started = false;
 let speed = -200;
-let canJump = true;
-
-// sons
-let jumpSound, hitSound, pointSound;
 
 const config = {
     type: Phaser.AUTO,
@@ -37,19 +33,17 @@ const config = {
         arcade: { gravity: { y: 500 } }
     },
     scene: {
-        preload, create, update
+        preload: preload,
+        create: create,
+        update: update
     }
 };
 
-const game = new Phaser.Game(config);
+new Phaser.Game(config);
 
 function preload() {
     this.load.image("player", "https://labs.phaser.io/assets/sprites/yellow_ball.png");
     this.load.image("pipe", "https://labs.phaser.io/assets/sprites/column.png");
-
-    this.load.audio("jump", "https://labs.phaser.io/assets/audio/SoundEffects/jump.mp3");
-    this.load.audio("hit", "https://labs.phaser.io/assets/audio/SoundEffects/explosion.mp3");
-    this.load.audio("point", "https://labs.phaser.io/assets/audio/SoundEffects/p-ping.mp3");
 }
 
 function create() {
@@ -57,10 +51,6 @@ function create() {
     player.setCollideWorldBounds(true);
 
     pipes = this.physics.add.group();
-
-    jumpSound = this.sound.add("jump");
-    hitSound = this.sound.add("hit");
-    pointSound = this.sound.add("point");
 
     scoreText = this.add.text(20, 20, "Score: 0", { fontSize: "22px", fill: "#fff" });
     bestText = this.add.text(20, 50, "Recorde: " + best, { fontSize: "16px", fill: "#aaa" });
@@ -70,32 +60,28 @@ function create() {
         fill: "#fff"
     });
 
-    // INPUT CORRIGIDO (mais confiável)
-    this.input.on("pointerdown", () => handleInput(this));
-    this.input.keyboard.on("keydown-SPACE", () => handleInput(this));
+    // INPUT SIMPLES E CONFIÁVEL
+    this.input.on("pointerdown", () => {
+        if (!started) {
+            startGame.call(this);
+        } else {
+            jump();
+        }
+    });
+
+    this.input.keyboard.on("keydown-SPACE", () => {
+        if (started) jump();
+    });
 }
 
-function handleInput(scene) {
-    // libera áudio
-    if (scene.sound.context.state === "suspended") {
-        scene.sound.context.resume();
-    }
-
-    if (!started) {
-        startGame(scene);
-    } else {
-        jump();
-    }
-}
-
-function startGame(scene) {
+function startGame() {
     started = true;
     startText.setVisible(false);
 
-    scene.time.addEvent({
+    this.time.addEvent({
         delay: 1400,
         callback: addPipes,
-        callbackScope: scene,
+        callbackScope: this,
         loop: true
     });
 }
@@ -111,28 +97,21 @@ function update() {
 }
 
 function jump() {
-    if (gameOver || !canJump) return;
+    if (gameOver) return;
 
-    canJump = false;
-
-    // ZERA velocidade antes (isso resolve o bug do pulo fraco)
+    // ESSA LINHA RESOLVE 90% DOS BUGS DE PULO
     player.setVelocityY(0);
-    player.setVelocityY(-420);
-
-    if (jumpSound) jumpSound.play();
+    player.setVelocityY(-400);
 
     player.setAngle(-20);
-    setTimeout(() => {
-        player.setAngle(0);
-        canJump = true;
-    }, 150);
+    setTimeout(() => player.setAngle(0), 150);
 }
 
 function addPipes() {
     if (gameOver) return;
 
-    let gap = Phaser.Math.Clamp(180 - score * 2, 120, 180);
-    let topHeight = Phaser.Math.Between(80, 400);
+    let gap = 150;
+    let topHeight = Phaser.Math.Between(100, 400);
 
     let pipeTop = pipes.create(400, topHeight - gap, "pipe");
     pipeTop.setOrigin(0,1);
@@ -144,26 +123,20 @@ function addPipes() {
     pipeBottom.body.allowGravity = false;
     pipeBottom.setVelocityX(speed);
 
-    let scoreZone = this.add.rectangle(400, 300, 10, 600);
-    this.physics.add.existing(scoreZone);
-    scoreZone.body.allowGravity = false;
-    scoreZone.body.setVelocityX(speed);
+    // pontuação simples
+    let passed = false;
 
-    this.physics.add.overlap(player, scoreZone, () => {
-        score++;
-        scoreText.setText("Score: " + score);
-
-        if (pointSound) pointSound.play();
-
-        scoreZone.destroy();
-        speed -= 2;
-    });
+    pipeBottom.update = function() {
+        if (!passed && this.x < player.x) {
+            score++;
+            scoreText.setText("Score: " + score);
+            passed = true;
+        }
+    };
 }
 
 function hitPipe() {
     gameOver = true;
-
-    if (hitSound) hitSound.play();
 
     if (score > best) {
         best = score;
@@ -171,24 +144,10 @@ function hitPipe() {
     }
 
     this.add.text(60, 250, "GAME OVER", { fontSize: "28px", fill: "#ff4d4d" });
-    this.add.text(40, 300, "Clique para reiniciar", { fontSize: "18px", fill: "#fff" });
 
-    this.input.once("pointerdown", () => restartGame.call(this));
-}
-
-function restartGame() {
-    score = 0;
-    speed = -200;
-    gameOver = false;
-    started = false;
-
-    pipes.clear(true, true);
-    player.setPosition(100, 300);
-    player.setVelocity(0);
-
-    scoreText.setText("Score: 0");
-    bestText.setText("Recorde: " + best);
-    startText.setVisible(true);
+    this.input.once("pointerdown", () => {
+        location.reload();
+    });
 }
 </script>
 
